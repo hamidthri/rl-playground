@@ -5,10 +5,12 @@ import time
 import os
 
 # Import the fixed environment
-from env import CartPoleEnv, CartPoleVisualizer
+from env import EnvWrapper
 from ppo import ImprovedPPO
+from utils import plot_training_stats
+from test import test_trained_model
 
-def train_ppo(num_steps=200000, max_steps_per_episode=500, 
+def train_ppo(args, num_steps=200000, max_steps_per_episode=500, 
               update_frequency=2048, num_updates=10):
     """
     Train the PPO agent on the CartPole environment
@@ -24,7 +26,8 @@ def train_ppo(num_steps=200000, max_steps_per_episode=500,
         reward_history: Rewards per episode
     """
     # Create environment
-    env = CartPoleEnv()
+    env = EnvWrapper(args.env, render=args.visualize)
+
     
     # Create improved PPO agent
     ppo = ImprovedPPO(
@@ -46,7 +49,7 @@ def train_ppo(num_steps=200000, max_steps_per_episode=500,
     
     print("Starting improved PPO training with CartPole-v1...")
     
-    state = env.reset()
+    state, _ = env.reset()
     episode_reward = 0
     episode_length = 0
     episode_count = 0
@@ -60,7 +63,8 @@ def train_ppo(num_steps=200000, max_steps_per_episode=500,
         action, action_probs, state_tensor = ppo.select_action(state)
         
         # Apply action and get next state
-        next_state, reward, done, _ = env.step(action)
+        next_state, reward, terminated, truncated, info = env.step(action)
+        done = terminated or truncated
         
         # Modified reward for better learning
         # Penalize falling too quickly
@@ -105,7 +109,7 @@ def train_ppo(num_steps=200000, max_steps_per_episode=500,
                       f"avg length: {avg_length:.1f}, total steps: {total_steps}")
             
             # Reset environment for next episode
-            state = env.reset()
+            state, _ = env.reset()
             episode_reward = 0
             episode_length = 0
             episode_count += 1
@@ -129,99 +133,13 @@ def train_ppo(num_steps=200000, max_steps_per_episode=500,
     print("Training complete!")
     
     # Save final model
+    algo_name = "ppo"
+    env_name = args.env.replace("-", "_")
     os.makedirs("models", exist_ok=True)
-    ppo.save("models/ppo_cartpole_final.pth")
+    ppo.save(f"models/{algo_name}_{env_name}_final.pth")
     env.close()
     
     return ppo, reward_history, episode_lengths
-
-
-def plot_training_stats(reward_history, episode_lengths):
-    """Plot the reward history and episode lengths"""
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 10))
-    
-    # Plot rewards
-    ax1.plot(reward_history)
-    ax1.set_xlabel('Episode')
-    ax1.set_ylabel('Reward')
-    ax1.set_title('Training Rewards')
-    
-    # Add moving average to reward plot
-    window_size = 100
-    if len(reward_history) >= window_size:
-        moving_avg = np.convolve(reward_history, np.ones(window_size)/window_size, mode='valid')
-        ax1.plot(range(window_size-1, len(reward_history)), moving_avg, 'r-', label='Moving Average')
-        ax1.legend()
-    
-    # Plot episode lengths
-    ax2.plot(episode_lengths)
-    ax2.set_xlabel('Episode')
-    ax2.set_ylabel('Episode Length')
-    ax2.set_title('Episode Lengths')
-    
-    # Add moving average to episode length plot
-    if len(episode_lengths) >= window_size:
-        moving_avg = np.convolve(episode_lengths, np.ones(window_size)/window_size, mode='valid')
-        ax2.plot(range(window_size-1, len(episode_lengths)), moving_avg, 'r-', label='Moving Average')
-        ax2.legend()
-    
-    plt.tight_layout()
-    
-    # Save the figure
-    os.makedirs("results", exist_ok=True)
-    plt.savefig("results/training_stats.png")
-    plt.show()
-
-
-def test_trained_model(model_path, num_episodes=10, visualize=True):
-    """
-    Test a trained PPO model
-    
-    Args:
-        model_path: Path to saved model
-        num_episodes: Number of episodes to test
-        visualize: Whether to visualize the episodes
-    """
-    # Create environment
-    env = CartPoleEnv()
-    
-    # Create PPO agent and load weights
-    ppo = ImprovedPPO(
-        state_dim=env.state_dim,
-        action_dim=env.action_dim,
-    )
-    ppo.load(model_path)
-    
-    if visualize:
-        # Create visualizer with the trained controller
-        visualizer = CartPoleVisualizer(env, controller=ppo)
-        visualizer.animate(frames=1000, interval=20)
-    else:
-        # Run without visualization
-        total_rewards = []
-        total_lengths = []
-        
-        for i in range(num_episodes):
-            state = env.reset()
-            episode_reward = 0
-            episode_length = 0
-            done = False
-            
-            while not done and episode_length < 500:
-                action, _, _ = ppo.select_action(state)
-                state, reward, done, _ = env.step(action)
-                episode_reward += reward
-                episode_length += 1
-            
-            total_rewards.append(episode_reward)
-            total_lengths.append(episode_length)
-            print(f"Test Episode {i}: Reward = {episode_reward}, Length = {episode_length}")
-        
-        print(f"Average reward over {num_episodes} episodes: {np.mean(total_rewards):.2f}")
-        print(f"Average episode length: {np.mean(total_lengths):.2f}")
-    
-    env.close()
-
 
 if __name__ == "__main__":
     import argparse
@@ -234,6 +152,8 @@ if __name__ == "__main__":
     parser.add_argument('--num_updates', type=int, default=10, help='Number of updates after collecting data')
     parser.add_argument('--episodes', type=int, default=10, help='Number of episodes for testing')
     parser.add_argument('--visualize', action='store_true', help='Visualize test episodes')
+    parser.add_argument('--env', type=str, default='CartPole-v1', help='Gym environment name')
+
     args = parser.parse_args()
     
     if args.mode == 'train':
@@ -242,19 +162,21 @@ if __name__ == "__main__":
         os.makedirs("models", exist_ok=True)
         
         # Train the agent
-        ppo, reward_history, episode_lengths = train_ppo(
+        ppo, reward_history, episode_lengths = train_ppo(args,
             num_steps=args.total_steps,
             update_frequency=args.update_frequency,
             num_updates=args.num_updates
         )
         
         # Plot training statistics
-        plot_training_stats(reward_history, episode_lengths)
+        # plot_training_stats(reward_history, episode_lengths)
+        plot_training_stats(reward_history, episode_lengths, show_plot=False, save_plot=True)
+
         
         # Test the best model with visualization
         print("\nTesting the best trained model with visualization...")
-        test_trained_model('models/ppo_cartpole_best.pth', num_episodes=3, visualize=True)
+        # test_trained_model('models/ppo_cartpole_best.pth', num_episodes=3, visualize=True)
     
     elif args.mode == 'test':
         print(f"Testing improved PPO agent with model: {args.model}")
-        test_trained_model(args.model, num_episodes=args.episodes, visualize=args.visualize)
+        test_trained_model(args.env, args.model, num_episodes=args.episodes, visualize=args.visualize)

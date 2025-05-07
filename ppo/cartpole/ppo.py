@@ -5,49 +5,12 @@ import numpy as np
 from collections import deque
 import random
 import math
+from actor import ActorNetwork
+from critic import CriticNetwork
+from utils import ReplayMemory
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# Simple network architectures for better stability
-class ActorNetwork(nn.Module):
-    def __init__(self, state_dim, action_dim, hidden_dim=64):
-        super(ActorNetwork, self).__init__()
-        self.fc1 = nn.Linear(state_dim, hidden_dim)
-        self.fc2 = nn.Linear(hidden_dim, hidden_dim)
-        self.fc3 = nn.Linear(hidden_dim, action_dim)
-        
-    def forward(self, state):
-        x = torch.relu(self.fc1(state))
-        x = torch.relu(self.fc2(x))
-        # For discrete action space (CartPole), output logits
-        action_logits = self.fc3(x)
-        return action_logits
-
-class CriticNetwork(nn.Module):
-    def __init__(self, state_dim, hidden_dim=64):
-        super(CriticNetwork, self).__init__()
-        self.fc1 = nn.Linear(state_dim, hidden_dim)
-        self.fc2 = nn.Linear(hidden_dim, hidden_dim)
-        self.fc3 = nn.Linear(hidden_dim, 1)
-        
-    def forward(self, state):
-        x = torch.relu(self.fc1(state))
-        x = torch.relu(self.fc2(x))
-        value = self.fc3(x)
-        return value
-
-class ReplayMemory:
-    def __init__(self, capacity=10000):
-        self.memory = deque(maxlen=capacity)
-    
-    def push(self, state, action, action_probs, reward, next_state, done):
-        self.memory.append((state, action, action_probs, reward, next_state, done))
-    
-    def sample(self, batch_size):
-        return random.sample(self.memory, batch_size)
-    
-    def __len__(self):
-        return len(self.memory)
 
 class ImprovedPPO:
     def __init__(self, state_dim, action_dim, lr_actor=0.0003, lr_critic=0.001, gamma=0.99, 
