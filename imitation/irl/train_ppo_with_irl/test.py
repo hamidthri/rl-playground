@@ -1,62 +1,65 @@
-import os
-import numpy as np
-import matplotlib.pyplot as plt
 import torch
-from rl.imitation.irl.train_ppo_with_irl.ppo import ImprovedPPO
-from rl.imitation.irl.train_ppo_with_irl.env import EnvWrapper
+import time
+import numpy as np
+from env import EnvWrapper
+from ppo import ImprovedPPO
 
-def test_trained_model(env_name, model_path, num_episodes=10, visualize=True):
+def test_trained_model(env_name, model_path, num_episodes=5, visualize=False):
     """
-    Test a trained PPO model
-    
-    Args:
-        env_name: Name of the environment
-        model_path: Path to saved model
-        num_episodes: Number of episodes to test
-        visualize: Whether to visualize the episodes
+    Test a trained PPO model on the given environment.
     """
-    # Create environment
-    env = EnvWrapper(env_name)
+    # Create environment with visualization if requested
+    env = EnvWrapper(env_name, render=visualize)
     
-    # Create PPO agent and load weights
+    # Load the model
     ppo = ImprovedPPO(
         state_dim=env.state_dim,
         action_dim=env.action_dim,
+        lr_actor=3e-4,
+        lr_critic=3e-4,
+        gamma=0.99,
+        K_epochs=10,
+        eps_clip=0.2,
+        replay_capacity=20000,
+        batch_size=64
     )
     ppo.load(model_path)
     
-    if visualize:
-        for i in range(num_episodes):
-            state, _ = env.reset()
-            done = False
-            episode_reward = 0
-            while not done:
-                action, _, _ = ppo.select_action(state)
-                next_state, reward, terminated, truncated, info = env.step(action)
-                done = terminated or truncated
-                env.render()
-                episode_reward += reward
-                state = next_state
-            print(f"Episode {i + 1} reward: {episode_reward}")
-    else:
-        total_rewards = []
-        total_lengths = []
-        for i in range(num_episodes):
-            state, _ = env.reset()
-            episode_reward = 0
-            episode_length = 0
-            done = False
-            while not done and episode_length < 500:
-                action, _, _ = ppo.select_action(state)
-                next_state, reward, terminated, truncated, info = env.step(action)
-                done = terminated or truncated
-                episode_reward += reward
-                episode_length += 1
-                state = next_state
-            total_rewards.append(episode_reward)
-            total_lengths.append(episode_length)
-            print(f"Test Episode {i + 1}: Reward = {episode_reward}, Length = {episode_length}")
-        print(f"Average reward over {num_episodes} episodes: {np.mean(total_rewards):.2f}")
-        print(f"Average episode length: {np.mean(total_lengths):.2f}")
-
+    print(f"Testing model from {model_path} for {num_episodes} episodes...")
+    
+    rewards = []
+    episode_lengths = []
+    
+    for episode in range(num_episodes):
+        state, _ = env.reset()
+        episode_reward = 0
+        episode_length = 0
+        done = False
+        
+        while not done:
+            # Select action
+            action, _, _ = ppo.select_action(state)
+            
+            # Take step
+            next_state, reward, terminated, truncated, _ = env.step(action)
+            done = terminated or truncated
+            
+            episode_reward += reward
+            episode_length += 1
+            state = next_state
+            
+            # Short delay for visualization
+            if visualize:
+                env.render()  # No mode parameter needed in newer Gymnasium
+                time.sleep(0.01)
+        
+        rewards.append(episode_reward)
+        episode_lengths.append(episode_length)
+        print(f"Episode {episode+1}: Reward = {episode_reward}, Length = {episode_length}")
+    
+    avg_reward = np.mean(rewards)
+    avg_length = np.mean(episode_lengths)
+    print(f"Average Reward: {avg_reward:.2f}, Average Length: {avg_length:.2f}")
+    
     env.close()
+    return avg_reward, avg_length

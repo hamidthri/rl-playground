@@ -12,6 +12,20 @@ from test import test_trained_model
 # Make sure this matches your actual implementation or import it correctly
 from gail import Discriminator as GAILDiscriminator
 
+import torch
+import numpy as np
+import matplotlib.pyplot as plt
+import time
+import os
+
+from env import EnvWrapper
+from ppo import ImprovedPPO
+from utils import plot_training_stats
+from test import test_trained_model
+
+# Make sure this matches your actual implementation or import it correctly
+from gail import Discriminator as GAILDiscriminator
+
 def train_ppo_with_irl(args, num_steps=200000, max_steps_per_episode=500,
                        update_frequency=2048, num_updates=10):
     """
@@ -33,7 +47,7 @@ def train_ppo_with_irl(args, num_steps=200000, max_steps_per_episode=500,
     )
 
     # Load GAIL discriminator
-    gail_ckpt = torch.load("models/gail_cartpole.pth")
+    gail_ckpt = torch.load("/Users/htaheri/Documents/GitHub/rl-playground/imitation/irl/train_ppo_with_irl/gail_cartpole.pth")
     discriminator = GAILDiscriminator(env.state_dim, env.action_dim)
     discriminator.load_state_dict(gail_ckpt['discriminator_state_dict'])
     discriminator.eval()
@@ -60,9 +74,19 @@ def train_ppo_with_irl(args, num_steps=200000, max_steps_per_episode=500,
 
         # IRL reward from GAIL discriminator
         state_input = torch.FloatTensor(state).unsqueeze(0)
-        action_input = torch.tensor([[action]])
+        
+        # Handle discrete action space (CartPole)
+        action_input = torch.tensor([action], dtype=torch.long)
+        
+        # Make sure action_input is on the same device as the discriminator
+        action_input = action_input.to(next(discriminator.parameters()).device)
+        state_input = state_input.to(next(discriminator.parameters()).device)
+            
         with torch.no_grad():
-            irl_reward = -torch.log(1 - discriminator(state_input, action_input) + 1e-10).item()
+            # Get probability from discriminator
+            d_output = discriminator(state_input, action_input)
+            # Calculate reward as negative log of complement probability
+            irl_reward = -torch.log(1 - d_output + 1e-10).item()
 
         # Store IRL reward
         ppo.store_transition(
@@ -119,13 +143,12 @@ def train_ppo_with_irl(args, num_steps=200000, max_steps_per_episode=500,
     env.close()
     return ppo, reward_history, episode_lengths
 
-
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Train PPO with GAIL reward")
     parser.add_argument('--mode', choices=['train', 'test'], default='train', help='Train or test mode')
-    parser.add_argument('--model', type=str, default='models/ppo_cartpole_best.pth', help='Path to saved model')
+    parser.add_argument('--model', type=str, default='/Users/htaheri/Documents/GitHub/rl-playground/imitation/irl/train_ppo_with_irl/gail_cartpole.pth', help='Path to saved model')
     parser.add_argument('--total_steps', type=int, default=200000, help='Total training steps')
     parser.add_argument('--update_frequency', type=int, default=2048, help='Steps before PPO update')
     parser.add_argument('--num_updates', type=int, default=10, help='Number of PPO updates')

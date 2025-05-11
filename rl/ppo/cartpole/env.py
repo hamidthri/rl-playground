@@ -62,9 +62,9 @@ class EnvWrapper:
         """Close the environment"""
         self.env.close()
     
-    def render(self, mode='human'):
+    def render(self):
         """Render the environment"""
-        return self.env.render(mode=mode)
+        return self.env.render()
     
     def get_action_space_type(self):
         """Return whether the action space is discrete or continuous"""

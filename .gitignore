@@ -1,5 +1,10 @@
-.venv/
+# Model weights and training outputs
+*.pth
+*.png
+*/models/
+*/results/
+
+# Python artifacts
 **/__pycache__/
 *.pyc
-*.pyo
-*.pyd
+.venv/

@@ -5,9 +5,9 @@ import numpy as np
 from collections import deque
 import random
 import math
-from rl.imitation.irl.train_ppo_with_irl.actor import ActorNetwork
-from rl.imitation.irl.train_ppo_with_irl.critic import CriticNetwork
-from rl.imitation.irl.train_ppo_with_irl.utils import ReplayMemory
+from actor import ActorNetwork
+from critic import CriticNetwork
+from utils import ReplayMemory
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

@@ -16,7 +16,8 @@ def test_trained_model(env_name, model_path, num_episodes=10, visualize=True):
         visualize: Whether to visualize the episodes
     """
     # Create environment
-    env = EnvWrapper(env_name)
+    env = EnvWrapper(env_name, render=visualize)
+
     
     # Create PPO agent and load weights
     ppo = ImprovedPPO(

@@ -32,6 +32,9 @@ class Discriminator(nn.Module):
             nn.Linear(hidden_dim, 1),
             nn.Sigmoid()  # Output is probability of being from expert
         )
+        
+        self.state_dim = state_dim
+        self.action_dim = action_dim
     
     def forward(self, states, actions):
         """
@@ -39,22 +42,31 @@ class Discriminator(nn.Module):
         
         Args:
             states: Batch of states [batch_size, state_dim]
-            actions: Batch of actions [batch_size, action_dim]
+            actions: Batch of actions [batch_size, action_dim] or [batch_size] for discrete actions
             
         Returns:
             Probability that each state-action pair is from expert
         """
         # For discrete actions, convert to one-hot
         if actions.dtype == torch.int64 or actions.dtype == torch.long:
-            action_dim = int(actions.max().item() + 1)
-            actions_one_hot = torch.zeros(actions.size(0), action_dim, device=actions.device)
-            actions_one_hot.scatter_(1, actions.unsqueeze(1), 1)
+            # Get the batch size
+            batch_size = actions.size(0)
+            
+            # Create one-hot tensor with proper size
+            actions_one_hot = torch.zeros(batch_size, self.action_dim, device=actions.device)
+            
+            # Ensure actions is the right shape before using scatter_
+            if actions.dim() == 1:
+                # If actions is [batch_size], unsqueeze to [batch_size, 1]
+                actions = actions.unsqueeze(1)
+                
+            # Fill one-hot tensor
+            actions_one_hot.scatter_(1, actions, 1)
             actions = actions_one_hot
         
         # Concatenate state and action
         state_action = torch.cat([states, actions], dim=1)
         return self.model(state_action)
-
 
 class PolicyNetwork(nn.Module):
     """Policy network for GAIL agent."""
@@ -591,7 +603,7 @@ def main():
     parser = argparse.ArgumentParser(description="GAIL for CartPole")
     parser.add_argument("--ppo-path", type=str, default="/Users/htaheri/Documents/GitHub/rl-playground/rl/ppo/cartpole/models/ppo_cartpole_best.pth",
                         help="Path to PPO expert model")
-    parser.add_argument("--iterations", type=int, default=50,
+    parser.add_argument("--iterations", type=int, default=10,
                         help="Number of training iterations")
     parser.add_argument("--steps-per-update", type=int, default=2048,
                         help="Number of steps per update")
