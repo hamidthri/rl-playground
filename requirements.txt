@@ -1,0 +1,10 @@
+argparse
+gym
+gymnasium
+matplotlib
+numpy
+scipy
+setuptools
+tqdm
+torch
+ 
