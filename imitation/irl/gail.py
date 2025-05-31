@@ -486,7 +486,7 @@ class GAIL:
     
     def load(self, path):
         """Load model from .pth file"""
-        checkpoint = torch.load(path)
+        checkpoint = torch.load(path, weights_only=False)
         
         self.policy.load_state_dict(checkpoint['policy_state_dict'])
         self.discriminator.load_state_dict(checkpoint['discriminator_state_dict'])
@@ -494,6 +494,7 @@ class GAIL:
         self.discriminator_optim.load_state_dict(checkpoint['discriminator_optimizer_state_dict'])
         
         print(f"Model loaded from {path}")
+
     
     def render_policy(self, env_name="CartPole-v1", num_episodes=3):
         """Render the current policy."""
@@ -589,7 +590,7 @@ def plot_training_curves(gail_agent):
 
 def main():
     parser = argparse.ArgumentParser(description="GAIL for CartPole")
-    parser.add_argument("--ppo-path", type=str, default="/Users/htaheri/Documents/GitHub/rl-playground/rl/ppo/cartpole/models/ppo_cartpole_best.pth",
+    parser.add_argument("--ppo-path", type=str, default="/workspaces/rl-playground/rl/ppo/cartpole/models/ppo_cartpole_best.pth",
                         help="Path to PPO expert model")
     parser.add_argument("--iterations", type=int, default=50,
                         help="Number of training iterations")
@@ -677,6 +678,13 @@ def main():
         if args.render:
             print("Rendering trained policy...")
             gail_agent.render_policy(args.env)  # Pass the env name
+            render_env = gym.wrappers.RecordVideo(
+                gym.make(args.env, render_mode="human"),
+                video_folder="videos/",
+                episode_trigger=lambda episode_id: True,
+                name_prefix="gail_policy"
+            )
+
         else:
             avg_reward = gail_agent.evaluate(env)
             print(f"Evaluation average reward: {avg_reward:.2f}")

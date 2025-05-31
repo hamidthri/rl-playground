@@ -7,4 +7,4 @@ scipy
 setuptools
 tqdm
 torch
- 
+gymnasium[classic-control]
