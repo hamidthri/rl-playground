@@ -12,7 +12,7 @@ A comprehensive reinforcement learning and imitation learning toolkit supporting
   - Generative Adversarial Imitation Learning (GAIL)
   - Maximum Entropy Inverse Reinforcement Learning (MaxEnt IRL)
   - Behavioral Cloning (BC)
-- ** MPC**
+- **MPC**
   - Model Predictive Control (MPC) - traditional control baseline
 
 - **Supported Environments:**
