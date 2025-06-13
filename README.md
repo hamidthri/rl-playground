@@ -149,7 +149,7 @@ Core dependencies include:
 - PyTorch
 - OpenAI Gym
 - NumPy
-- Matplotlib (for plotting results)
+- Matplotlib
 
 See `requirements.txt` for complete list.
 
@@ -162,12 +162,3 @@ See `requirements.txt` for complete list.
    - SAC is designed for continuous control tasks
 
 3. **Model Persistence**: All trained models and results are automatically saved with timestamps and performance metrics.
-
-## Contributing
-
-Feel free to extend this playground with:
-- Additional RL algorithms (DQN, A3C, etc.)
-- More environments
-- Advanced imitation learning methods
-- Hyperparameter optimization tools
-- code structure improvements by making it more modular
