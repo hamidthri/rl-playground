@@ -7,12 +7,13 @@ A comprehensive reinforcement learning and imitation learning toolkit supporting
 - **Reinforcement Learning Algorithms:**
   - Proximal Policy Optimization (PPO) - discrete and continuous environments
   - Soft Actor-Critic (SAC) - continuous control
-  - Model Predictive Control (MPC) - traditional control baseline
 
 - **Imitation Learning Methods:**
   - Generative Adversarial Imitation Learning (GAIL)
   - Maximum Entropy Inverse Reinforcement Learning (MaxEnt IRL)
   - Behavioral Cloning (BC)
+- ** MPC**
+  - Model Predictive Control (MPC) - traditional control baseline
 
 - **Supported Environments:**
   - CartPole-v1 (discrete)
